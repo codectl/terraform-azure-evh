@@ -1,0 +1,107 @@
+variable "namespace" {
+  description = "Contains all eventhub configuration"
+  type = object({
+    name                          = string
+    resource_group_name           = optional(string)
+    location                      = optional(string)
+    sku                           = optional(string, "Standard")
+    capacity                      = optional(number)
+    minimum_tls_version           = optional(string)
+    auto_inflate_enabled          = optional(bool, false)
+    dedicated_cluster_id          = optional(string)
+    maximum_throughput_units      = optional(number)
+    network_rulesets              = optional(list(any))
+    local_authentication_enabled  = optional(bool)
+    public_network_access_enabled = optional(bool)
+    tags                          = optional(map(string))
+    identity = optional(object({
+      type         = optional(string, "SystemAssigned")
+      identity_ids = optional(list(string))
+    }), null)
+    schema_groups = optional(map(object({
+      name                 = optional(string)
+      schema_type          = optional(string, "Avro")
+      schema_compatibility = optional(string, "Forward")
+    })), {})
+    authorization_rules = optional(map(object({
+      name   = optional(string)
+      listen = optional(bool)
+      send   = optional(bool)
+      manage = optional(bool)
+    })), {})
+    eventhubs = optional(map(object({
+      name              = optional(string)
+      partition_count   = optional(number, 2)
+      message_retention = optional(number)
+      status            = optional(string)
+      retention_description = optional(object({
+        cleanup_policy                    = string
+        retention_time_in_hours           = optional(number)
+        tombstone_retention_time_in_hours = optional(number)
+      }), null)
+      capture_description = optional(object({
+        enabled             = bool
+        encoding            = string
+        interval_in_seconds = optional(number)
+        size_limit_in_bytes = optional(number)
+        skip_empty_archives = optional(bool)
+        destination = object({
+          name                        = optional(string, "EventHubArchive.AzureBlockBlob")
+          archive_name_format         = string
+          blob_container_name         = string
+          storage_account_id          = string
+          storage_authentication_id   = optional(string)
+          storage_authentication_type = optional(string)
+        })
+      }), null)
+      authorization_rules = optional(map(object({
+        name   = optional(string)
+        listen = optional(bool)
+        send   = optional(bool)
+        manage = optional(bool)
+      })), {})
+      consumer_groups = optional(map(object({
+        name          = optional(string)
+        user_metadata = optional(string)
+      })), {})
+    })), {})
+  })
+
+  validation {
+    condition     = var.namespace.location != null || var.location != null
+    error_message = "location must be provided either in the config object or as a separate variable."
+  }
+
+  validation {
+    condition     = var.namespace.resource_group_name != null || var.resource_group_name != null
+    error_message = "resource group name must be provided either in the config object or as a separate variable."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for _, eventhub in var.namespace.eventhubs : [
+        eventhub.message_retention == null || eventhub.retention_description == null
+      ]
+    ]))
+    error_message = "eventhubs.message_retention and eventhubs.retention_description cannot be set together."
+  }
+
+}
+
+variable "location" {
+  description = "default azure region to be used."
+  type        = string
+  default     = null
+}
+
+variable "resource_group_name" {
+  description = "default resource group to be used."
+  type        = string
+  default     = null
+}
+
+variable "tags" {
+  description = "tags to be added to the resources"
+  type        = map(string)
+  default     = {}
+}
