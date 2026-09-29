@@ -1,25 +1,34 @@
 module "naming" {
-  source  = "cloudnationhq/naming/azure"
-  version = "~> 0.32"
+  source  = "codectl/naming/azure"
+  version = "~> 0.1"
 
   suffix = ["demo", "prd"]
 }
 
+module "regions" {
+  source  = "codectl/locations/azure"
+  version = "~> 1.0"
+
+  location = {
+    primary = "westeurope"
+  }
+}
+
 module "rg" {
-  source  = "cloudnationhq/rg/azure"
-  version = "~> 3.0"
+  source  = "codectl/rg/azure"
+  version = "~> 1.0"
 
   groups = {
     demo = {
       name     = module.naming.resource_group.name_unique
-      location = "westeurope"
+      location = module.regions.location.primary.name
     }
   }
 }
 
 module "eventhubs" {
-  source  = "cloudnationhq/evh/azure"
-  version = "~> 3.0"
+  source  = "codectl/evh/azure"
+  version = "~> 1.0"
 
   for_each = local.namespaces
 
@@ -27,8 +36,8 @@ module "eventhubs" {
 }
 
 module "cluster" {
-  source  = "cloudnationhq/evh/azure//modules/cluster"
-  version = "~> 4.0"
+  source  = "codectl/evh/azure//modules/cluster"
+  version = "~> 1.0"
 
   resource_group_name = module.rg.groups.demo.name
   location            = module.rg.groups.demo.location
